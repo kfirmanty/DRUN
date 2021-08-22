@@ -28,7 +28,7 @@ ELSE-BLOCK = (<'ELSE'> <WS>? <'\n'?> (EXPRESSION <'\n'?>)+)?
 VAR = #'[a-z]+' #'[a-z0-9_]*'
 VAL = NUMBER | STRING
 NUMBER = #'[0-9]+'
-STRING = <'\"'> (WS | #'\\w+' | #'\\d+')+ <'\"'>
+STRING = <'\"'> #'[\\w\\s\\d]+' <'\"'>
 
 ANL=<'\n'?>
 WS = #'\\s+'"))

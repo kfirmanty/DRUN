@@ -13,11 +13,15 @@
 (defn assignment-block->val-block [block]
   (nth block 2))
 
-(defn val-block->value [block]
-  (-> block second second))
-
 (defn val-block->type [block]
   (-> block second first))
+
+(defn val-block->value [block]
+  (let [type (val-block->type block)
+        raw-val (-> block second second)]
+    (if (= type :NUMBER)
+      (Integer/parseInt raw-val)
+      raw-val)))
 
 (defn var-block->name [block]
   (second block))
@@ -48,6 +52,9 @@
 
 (defn val? [block]
   (= (first block) :VAL))
+
+(defn return? [block]
+  (= (first block) :RETURN))
 
 (defn var->value [env var-name]
   (get-in env [:vars var-name :value]))
@@ -87,8 +94,6 @@
 
 (declare exec-return)
 
-(declare exec-fn-body)
-
 (defn exec-assignment-var [env assignment-block]
   (let [var-name (assignment-block->name assignment-block)
         val-block (assignment-block->val-block assignment-block)]
@@ -105,18 +110,36 @@
         var-name (var-block->name var-block)]
     (bind-variable env var-name value)))
 
+(defn exec-assignment [env assignment-block]
+  (let [val-block (assignment-block->val-block assignment-block)]
+    (cond
+      (fn-call? val-block) (exec-assignment-fn-call env assignment-block)
+      (var? val-block) (exec-assignment-var env assignment-block)
+      (val? val-block) (exec-assignment-val env assignment-block))))
+
+(defn expr->val [env expr]
+  (cond
+    (fn-call? expr)
+    (exec-fn-call env expr)
+    (var? expr)
+    [env (var->value env (var-block->name expr))]
+    (val? expr)
+    [env (val-block->value expr)]))
+
 (defn bind-fn-variables [env args arg-names]
   (loop [env env [arg & args] args [arg-name & arg-names] arg-names]
     (if (nil? arg)
       env
-      (let [[env value] (cond
-                          (fn-call? arg)
-                          (exec-fn-call env arg)
-                          (var? arg)
-                          [env (var->value env (var-block->name arg))]
-                          (val? arg)
-                          [env (val-block->value arg)])]
+      (let [[env value] (expr->val env arg)]
         (recur (bind-variable env arg-name value) args arg-names)))))
+
+(defn exec-fn-body [env exprs]
+  (loop [env env [expr & exprs] exprs return-val nil]
+    (cond return-val [env return-val]
+          (nil? expr) [env nil]
+          :else (cond (fn-call? expr) (recur (first (exec-fn-call env expr)) exprs return-val)
+                      (assignment? expr) (recur (exec-assignment env expr) exprs return-val)
+                      (return? expr) (let [[env val] (expr->val env (second expr))] (recur env exprs val))))))
 
 (defn exec-fn-call [env fn-call-block]
   (let [fn-name (fn-call-block->name fn-call-block)
@@ -139,17 +162,13 @@
                :fn body
                :args args})))
 
-(defn test-native-fn-call []
-  (exec-fn-call (env) [:FN-CALL [:FN-NAME "ADD"] [:VAL [:NUMBER 2]] [:VAL [:NUMBER 3]]]))
+(defn prepare-env [code-str]
+  (let [env (env)
+        code (p/parser code-str)]
+    (loop [env env terms code]
+      (if (nil? (first terms))
+        env
+        (recur (exec-fn-def env (first terms)) (rest terms))))))
 
-(defn test-parse []
-  (let [code-str "FN MAIN()
-PRINT(\"test\")
-END"
-        env (env)
-        code (p/parser code-str)
-        env (loop [env env terms code]
-              (if (nil? (first terms))
-                env
-                (recur (exec-fn-def env (first terms)) (rest terms))))]
-    (exec-fn-call env [:FN-CALL [:FN-NAME "PRINT"] [:VAL [:STRING "TEST"]]])))
+(defn call-main [env]
+  (exec-fn-call env [:FN-CALL [:FN-NAME "MAIN"]]))
