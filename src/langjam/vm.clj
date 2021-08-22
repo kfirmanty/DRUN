@@ -38,6 +38,24 @@
 (defn fn-def-block->body-blocks [block]
   (drop 3 block))
 
+(defn if-test-block->op [block]
+  (second (nth block 2)))
+
+(defn if-test-block->left [block]
+  (second block))
+
+(defn if-test-block->right [block]
+  (nth block 3))
+
+(defn if-cond-block->if-test-block [block]
+  (second block))
+
+(defn if-cond-block->if-block [block]
+  (nth block 2))
+
+(defn if-cond-block->else-block [block]
+  (nth block 3))
+
 (defn fn-def? [block]
   (= (first block) :FN-DEF))
 
@@ -56,6 +74,16 @@
 (defn return? [block]
   (= (first block) :RETURN))
 
+(defn if-cond? [block]
+  (= (first block) :IF-COND))
+
+(defn else-block? [block]
+  (= (first block) :ELSE-BLOCK))
+
+(defn has-else-block? [if-block]
+  (and (= (count if-block) 4)
+       (else-block? (if-cond-block->else-block if-block))))
+
 (defn var->value [env var-name]
   (get-in env [:vars var-name :value]))
 
@@ -64,7 +92,7 @@
           (var->value env "b"))])
 
 (defn sub [env]
-  [env (+ (var->value env "a")
+  [env (- (var->value env "a")
           (var->value env "b"))])
 
 (defn print-msg [env & args]
@@ -133,13 +161,32 @@
       (let [[env value] (expr->val env arg)]
         (recur (bind-variable env arg-name value) args arg-names)))))
 
-(defn exec-fn-body [env exprs]
+(defn exec-if-test [env if-test-block]
+  (let [op (if-test-block->op if-test-block)
+        left-val (second (expr->val env (if-test-block->left if-test-block)))
+        right-val (second (expr->val env (if-test-block->right if-test-block)))
+        op->fn {"==" =
+                "!=" not=
+                "<" <
+                "<=" <=
+                ">" >
+                ">=" >=}]
+    ((get op->fn op) left-val right-val)))
+
+(defn exec-exprs [env exprs]
   (loop [env env [expr & exprs] exprs return-val nil]
     (cond return-val [env return-val]
           (nil? expr) [env nil]
           :else (cond (fn-call? expr) (recur (first (exec-fn-call env expr)) exprs return-val)
                       (assignment? expr) (recur (exec-assignment env expr) exprs return-val)
-                      (return? expr) (let [[env val] (expr->val env (second expr))] (recur env exprs val))))))
+                      (return? expr) (let [[env val] (expr->val env (second expr))] (recur env exprs val))
+                      (if-cond? expr) (let [test-val (exec-if-test env (if-cond-block->if-test-block expr))
+                                            [env possible-ret-val] (exec-exprs env (rest (if test-val
+                                                                                          (if-cond-block->if-block expr)
+                                                                                          (if (has-else-block? expr)
+                                                                                            (if-cond-block->else-block expr)
+                                                                                            [env nil]))))]
+                                        (recur env exprs (or possible-ret-val return-val)))))))
 
 (defn exec-fn-call [env fn-call-block]
   (let [fn-name (fn-call-block->name fn-call-block)
@@ -150,7 +197,7 @@
         env (bind-fn-variables env args arg-names)
         [nenv ret-val] (if (:native? fn-meta)
                          ((:fn fn-meta) env)
-                         (exec-fn-body env (:fn fn-meta)))]
+                         (exec-exprs env (:fn fn-meta)))]
     [(assoc nenv :vars old-vars) ret-val]))
 
 (defn exec-fn-def [env fn-def-block]

@@ -15,15 +15,17 @@ ARG-LIST = <'('> (VAR <WS>?)* <')'>
 
 ASSIGNMENT = VAR <WS>? <'='> <WS>? (FN-CALL | VAL)
 
-RETURN = <'RETURN'> <WS> (VAR | FN-CALL | VAL)
+RETURN = <'RETURN'> <WS> VAL-EXPR
 
-FN-CALL = FN-NAME <'('> ((VAR | FN-CALL | VAL) <WS>?)* <')'>
+FN-CALL = FN-NAME <'('> (VAL-EXPR <WS>?)* <')'>
 
-IF-COND = <'IF'> <WS> IF-TEST <WS>? <'\n'?> IF-BLOCK <WS>? ELSE-BLOCK <'ENDIF'>
-IF-TEST = ((VAR | FN-CALL | VAL) <WS>?) TEST-OP <WS>? ((VAR | FN-CALL | VAL) <WS>?)
-TEST-OP = '==' | '<' | '<=' | '>=' | '>'
-IF-BLOCK = (EXPRESSION <'\n'?>)+
-ELSE-BLOCK = (<'ELSE'> <WS>? <'\n'?> (EXPRESSION <'\n'?>)+)?
+IF-COND = <'IF'> <WS> IF-TEST <WS>? <'\n'?> IF-BLOCK <WS>? ELSE-BLOCK? <WS>? <'ENDIF'>
+IF-TEST = (VAL-EXPR <WS>?) TEST-OP <WS>? VAL-EXPR <WS>?
+TEST-OP = '==' | '<' | '<=' | '>=' | '>' | '!='
+IF-BLOCK = (EXPRESSION <WS>? <'\n'?>)+
+ELSE-BLOCK = <'ELSE'> <WS>? <'\n'?> (EXPRESSION <'\n'?>)+
+
+<VAL-EXPR> = (VAR | FN-CALL | VAL)
 
 VAR = #'[a-z0-9_]+'
 VAL = NUMBER | STRING
