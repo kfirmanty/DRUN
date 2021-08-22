@@ -3,7 +3,7 @@
 
 (def parser (insta/parser "
 <S> = TERM+
-TERM = (FN-DEF | COMMENT) '\n'?
+<TERM> = (FN-DEF | COMMENT) '\n'?
 
 COMMENT = <'#'> (<WS> | #'\\w+')+ <'\n'>
 
