@@ -8,7 +8,7 @@
 COMMENT = <'#'> (<WS> | #'\\w+')+ <'\n'>
 
 FN-DEF = <'FN'> <WS> FN-NAME ARG-LIST <WS> <'\n'?> (EXPRESSION <'\n'?>)+ <'END'>
-FN-NAME = #'[A-Z]+' #'[A-Z0-9_]*'
+FN-NAME = #'[A-Z0-9_]+'
 ARG-LIST = <'('> (VAR <WS>?)* <')'>
 
 <EXPRESSION> = ASSIGNMENT | FN-CALL | RETURN | IF-COND
@@ -25,7 +25,7 @@ TEST-OP = '==' | '<' | '<=' | '>=' | '>'
 IF-BLOCK = (EXPRESSION <'\n'?>)+
 ELSE-BLOCK = (<'ELSE'> <WS>? <'\n'?> (EXPRESSION <'\n'?>)+)?
 
-VAR = #'[a-z]+' #'[a-z0-9_]*'
+VAR = #'[a-z0-9_]+'
 VAL = NUMBER | STRING
 NUMBER = #'[0-9]+'
 STRING = <'\"'> #'[\\w\\s\\d]+' <'\"'>

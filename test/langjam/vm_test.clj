@@ -3,7 +3,6 @@
             [langjam.parser :as parser]
             [clojure.test :as t]))
 
-
 (t/deftest should-properly-call-native-fn
   (t/is (= [(vm/env) 5] (vm/exec-fn-call (vm/env) [:FN-CALL [:FN-NAME "ADD"] [:VAL [:NUMBER "2"]] [:VAL [:NUMBER "3"]]]))))
 
@@ -18,14 +17,14 @@ END")]
                         [:fns :MAIN]
                         {:native? false,
                          :fn
-                         '([:FN-CALL [:FN-NAME "PRINT" ""] [:VAL [:STRING "test\n"]]]
+                         '([:FN-CALL [:FN-NAME "PRINT"] [:VAL [:STRING "test\n"]]]
                            [:FN-CALL
-                            [:FN-NAME "PRINT" ""]
+                            [:FN-NAME "PRINT"]
                             [:FN-CALL
-                             [:FN-NAME "ADD" ""]
+                             [:FN-NAME "ADD"]
                              [:VAL [:NUMBER "2"]]
                              [:VAL [:NUMBER "3"]]]]
-                           [:FN-CALL [:FN-NAME "PRINT" ""] [:VAL [:STRING "\n"]]]
+                           [:FN-CALL [:FN-NAME "PRINT"] [:VAL [:STRING "\n"]]]
                            [:RETURN [:VAL [:NUMBER "5"]]]),
                          :args []})
               5]
@@ -35,5 +34,15 @@ END")]
   (let [env (vm/prepare-env "FN MAIN()
 x = ADD(2 3)
 RETURN x
+END")]
+    (t/is (= 5 (-> env vm/call-main second)))))
+
+(t/deftest should-parse-all-fns-defined
+  (let [env (vm/prepare-env "FN ADD_2(a)
+RETURN ADD(a 2)
+END
+FN MAIN()
+x = 3
+RETURN ADD_2(x)
 END")]
     (t/is (= 5 (-> env vm/call-main second)))))

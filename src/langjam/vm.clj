@@ -164,11 +164,11 @@
 
 (defn prepare-env [code-str]
   (let [env (env)
-        code (p/parser code-str)]
-    (loop [env env terms code]
-      (if (nil? (first terms))
+        code (filter (complement string?) (p/parser code-str))]
+    (loop [env env [term & terms] code]
+      (if (nil? term)
         env
-        (recur (exec-fn-def env (first terms)) (rest terms))))))
+        (recur (exec-fn-def env term) terms)))))
 
 (defn call-main [env]
   (exec-fn-call env [:FN-CALL [:FN-NAME "MAIN"]]))
